@@ -222,14 +222,18 @@ func CalculateRuleUpdate(ctx context.Context, ruleReader RuleReader, rule *model
 }
 
 // CalculateRuleGroupDelete calculates GroupDelta that reflects an operation of removing entire group
-func CalculateRuleGroupDelete(ctx context.Context, ruleReader RuleReader, groupKey models.AlertRuleGroupKey) (*GroupDelta, error) {
+func CalculateRuleGroupDelete(ctx context.Context, ruleReader RuleReader, groupKey models.AlertRuleGroupKey, query *models.ListAlertRulesQuery) (*GroupDelta, error) {
 	// List all rules in the group.
-	q := models.ListAlertRulesQuery{
-		OrgID:         groupKey.OrgID,
-		NamespaceUIDs: []string{groupKey.NamespaceUID},
-		RuleGroups:    []string{groupKey.RuleGroup},
+	if query == nil {
+		// If query is not provided, we need to list all rules in the group,
+		// otherwise we will use only the rules that match the query.
+		query = &models.ListAlertRulesQuery{}
 	}
-	ruleList, err := ruleReader.ListAlertRules(ctx, &q)
+	query.OrgID = groupKey.OrgID
+	query.NamespaceUIDs = []string{groupKey.NamespaceUID}
+	query.RuleGroups = []string{groupKey.RuleGroup}
+
+	ruleList, err := ruleReader.ListAlertRules(ctx, query)
 	if err != nil {
 		return nil, err
 	}

@@ -436,7 +436,7 @@ func TestCalculateRuleGroupDelete(t *testing.T) {
 	fakeStore.Rules[groupKey.OrgID] = otherRules
 
 	t.Run("NotFound when group does not exist", func(t *testing.T) {
-		delta, err := CalculateRuleGroupDelete(context.Background(), fakeStore, groupKey)
+		delta, err := CalculateRuleGroupDelete(context.Background(), fakeStore, groupKey, nil)
 		require.ErrorIs(t, err, models.ErrAlertRuleGroupNotFound, "expected ErrAlertRuleGroupNotFound but got %s", err)
 		require.Nil(t, delta)
 	})
@@ -445,7 +445,7 @@ func TestCalculateRuleGroupDelete(t *testing.T) {
 		groupRules := gen.With(gen.WithGroupKey(groupKey)).GenerateManyRef(3)
 		fakeStore.Rules[groupKey.OrgID] = append(fakeStore.Rules[groupKey.OrgID], groupRules...)
 
-		delta, err := CalculateRuleGroupDelete(context.Background(), fakeStore, groupKey)
+		delta, err := CalculateRuleGroupDelete(context.Background(), fakeStore, groupKey, nil)
 		require.NoError(t, err)
 
 		assert.Equal(t, groupKey, delta.GroupKey)

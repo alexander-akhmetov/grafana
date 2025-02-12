@@ -142,7 +142,7 @@ type alertRule struct {
 }
 
 func (s *Service) getAlertRules(ctx context.Context, signedInUser *user.SignedInUser) ([]alertRule, error) {
-	alertRules, _, err := s.ngAlert.Api.AlertRules.GetAlertRules(ctx, signedInUser)
+	alertRules, _, err := s.ngAlert.Api.AlertRules.GetAlertRules(ctx, signedInUser, nil)
 	if err != nil {
 		return nil, fmt.Errorf("fetching alert rules: %w", err)
 	}
@@ -189,7 +189,7 @@ type alertRuleGroup struct {
 }
 
 func (s *Service) getAlertRuleGroups(ctx context.Context, signedInUser *user.SignedInUser) ([]alertRuleGroup, error) {
-	alertRuleGroupsWithFolder, err := s.ngAlert.Api.AlertRules.GetAlertGroupsWithFolderFullpath(ctx, signedInUser, nil)
+	alertRuleGroupsWithFolder, err := s.ngAlert.Api.AlertRules.GetAlertGroupsWithFolderFullpath(ctx, signedInUser, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("fetching alert rule groups with folders: %w", err)
 	}

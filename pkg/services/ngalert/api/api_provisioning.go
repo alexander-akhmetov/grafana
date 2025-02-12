@@ -67,17 +67,18 @@ type MuteTimingService interface {
 }
 
 type AlertRuleService interface {
-	GetAlertRules(ctx context.Context, user identity.Requester) ([]*alerting_models.AlertRule, map[string]alerting_models.Provenance, error)
+	GetAlertRules(ctx context.Context, user identity.Requester, filter *provisioning.AlertRuleFilter) ([]*alerting_models.AlertRule, map[string]alerting_models.Provenance, error)
 	GetAlertRule(ctx context.Context, user identity.Requester, ruleUID string) (alerting_models.AlertRule, alerting_models.Provenance, error)
 	CreateAlertRule(ctx context.Context, user identity.Requester, rule alerting_models.AlertRule, provenance alerting_models.Provenance) (alerting_models.AlertRule, error)
 	UpdateAlertRule(ctx context.Context, user identity.Requester, rule alerting_models.AlertRule, provenance alerting_models.Provenance) (alerting_models.AlertRule, error)
 	DeleteAlertRule(ctx context.Context, user identity.Requester, ruleUID string, provenance alerting_models.Provenance) error
-	GetRuleGroup(ctx context.Context, user identity.Requester, folder, group string) (alerting_models.AlertRuleGroup, error)
+	GetRuleGroup(ctx context.Context, user identity.Requester, folder, group string, query *alerting_models.ListAlertRulesQuery) (alerting_models.AlertRuleGroup, error)
 	ReplaceRuleGroup(ctx context.Context, user identity.Requester, group alerting_models.AlertRuleGroup, provenance alerting_models.Provenance) error
 	DeleteRuleGroup(ctx context.Context, user identity.Requester, folder, group string, provenance alerting_models.Provenance) error
+	DeleteAllGroupsInNamespace(ctx context.Context, user identity.Requester, folder string, provenance alerting_models.Provenance, query *alerting_models.ListAlertRulesQuery) error
 	GetAlertRuleWithFolderFullpath(ctx context.Context, u identity.Requester, ruleUID string) (provisioning.AlertRuleWithFolderFullpath, error)
 	GetAlertRuleGroupWithFolderFullpath(ctx context.Context, u identity.Requester, folder, group string) (alerting_models.AlertRuleGroupWithFolderFullpath, error)
-	GetAlertGroupsWithFolderFullpath(ctx context.Context, u identity.Requester, folderUIDs []string) ([]alerting_models.AlertRuleGroupWithFolderFullpath, error)
+	GetAlertGroupsWithFolderFullpath(ctx context.Context, u identity.Requester, folderUIDs []string, query *alerting_models.ListAlertRulesQuery) ([]alerting_models.AlertRuleGroupWithFolderFullpath, error)
 }
 
 func (srv *ProvisioningSrv) RouteGetPolicyTree(c *contextmodel.ReqContext) response.Response {
@@ -316,7 +317,7 @@ func (srv *ProvisioningSrv) RouteDeleteMuteTiming(c *contextmodel.ReqContext, na
 }
 
 func (srv *ProvisioningSrv) RouteGetAlertRules(c *contextmodel.ReqContext) response.Response {
-	rules, provenances, err := srv.alertRules.GetAlertRules(c.Req.Context(), c.SignedInUser)
+	rules, provenances, err := srv.alertRules.GetAlertRules(c.Req.Context(), c.SignedInUser, nil)
 	if err != nil {
 		return response.ErrOrFallback(http.StatusInternalServerError, "", err)
 	}
@@ -424,7 +425,7 @@ func (srv *ProvisioningSrv) RouteDeleteAlertRule(c *contextmodel.ReqContext, UID
 }
 
 func (srv *ProvisioningSrv) RouteGetAlertRuleGroup(c *contextmodel.ReqContext, folder string, group string) response.Response {
-	g, err := srv.alertRules.GetRuleGroup(c.Req.Context(), c.SignedInUser, folder, group)
+	g, err := srv.alertRules.GetRuleGroup(c.Req.Context(), c.SignedInUser, folder, group, nil)
 	if err != nil {
 		return response.ErrOrFallback(http.StatusInternalServerError, "", err)
 	}
@@ -452,7 +453,7 @@ func (srv *ProvisioningSrv) RouteGetAlertRulesExport(c *contextmodel.ReqContext)
 		return srv.RouteGetAlertRuleGroupExport(c, folderUIDs[0], group)
 	}
 
-	groupsWithFullpath, err := srv.alertRules.GetAlertGroupsWithFolderFullpath(c.Req.Context(), c.SignedInUser, folderUIDs)
+	groupsWithFullpath, err := srv.alertRules.GetAlertGroupsWithFolderFullpath(c.Req.Context(), c.SignedInUser, folderUIDs, nil)
 	if err != nil {
 		return response.ErrOrFallback(http.StatusInternalServerError, "failed to get alert rules", err)
 	}

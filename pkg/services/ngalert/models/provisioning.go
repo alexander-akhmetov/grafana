@@ -5,13 +5,14 @@ type Provenance string
 const (
 	// ProvenanceNone reflects the provenance when no provenance is stored
 	// for the requested object in the database.
-	ProvenanceNone Provenance = ""
-	ProvenanceAPI  Provenance = "api"
-	ProvenanceFile Provenance = "file"
+	ProvenanceNone               Provenance = ""
+	ProvenanceAPI                Provenance = "api"
+	ProvenanceFile               Provenance = "file"
+	ProvenanceImportedPrometheus Provenance = "imported_prometheus"
 )
 
 var (
-	KnownProvenances = []Provenance{ProvenanceNone, ProvenanceAPI, ProvenanceFile}
+	KnownProvenances = []Provenance{ProvenanceNone, ProvenanceAPI, ProvenanceFile, ProvenanceImportedPrometheus}
 )
 
 // Provisionable represents a resource that can be created through a provisioning mechanism, such as Terraform or config file.

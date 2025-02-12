@@ -33,6 +33,11 @@ type NotificationSettingsValidatorProvider interface {
 	Validator(ctx context.Context, orgID int64) (notifier.NotificationSettingsValidator, error)
 }
 
+type AlertRuleFilter struct {
+	NamespaceUIDs          []string
+	ImportedPrometheusRule *bool
+}
+
 type AlertRuleService struct {
 	defaultIntervalSeconds int64
 	baseIntervalSeconds    int64
@@ -74,11 +79,14 @@ func NewAlertRuleService(ruleStore RuleStore,
 	}
 }
 
-func (service *AlertRuleService) GetAlertRules(ctx context.Context, user identity.Requester) ([]*models.AlertRule, map[string]models.Provenance, error) {
-	q := models.ListAlertRulesQuery{
-		OrgID: user.GetOrgID(),
+func (service *AlertRuleService) GetAlertRules(ctx context.Context, user identity.Requester, query *models.ListAlertRulesQuery) ([]*models.AlertRule, map[string]models.Provenance, error) {
+	if query == nil {
+		query = &models.ListAlertRulesQuery{}
 	}
-	rules, err := service.ruleStore.ListAlertRules(ctx, &q)
+
+	query.OrgID = user.GetOrgID()
+
+	rules, err := service.ruleStore.ListAlertRules(ctx, query)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -262,13 +270,17 @@ func (service *AlertRuleService) CreateAlertRule(ctx context.Context, user ident
 	return rule, nil
 }
 
-func (service *AlertRuleService) GetRuleGroup(ctx context.Context, user identity.Requester, namespaceUID, group string) (models.AlertRuleGroup, error) {
-	q := models.ListAlertRulesQuery{
-		OrgID:         user.GetOrgID(),
-		NamespaceUIDs: []string{namespaceUID},
-		RuleGroups:    []string{group},
+func (service *AlertRuleService) GetRuleGroup(ctx context.Context, user identity.Requester, namespaceUID, group string, query *models.ListAlertRulesQuery) (models.AlertRuleGroup, error) {
+	if query == nil {
+		query = &models.ListAlertRulesQuery{}
 	}
-	ruleList, err := service.ruleStore.ListAlertRules(ctx, &q)
+
+	// These query parameters cannot be passed by the caller.
+	query.OrgID = user.GetOrgID()
+	query.NamespaceUIDs = []string{namespaceUID}
+	query.RuleGroups = []string{group}
+
+	ruleList, err := service.ruleStore.ListAlertRules(ctx, query)
 	if err != nil {
 		return models.AlertRuleGroup{}, err
 	}
@@ -420,7 +432,7 @@ func (service *AlertRuleService) DeleteRuleGroup(ctx context.Context, user ident
 		OrgID:        user.GetOrgID(),
 		NamespaceUID: namespaceUID,
 		RuleGroup:    group,
-	})
+	}, nil)
 	if err != nil {
 		return err
 	}
@@ -437,6 +449,63 @@ func (service *AlertRuleService) DeleteRuleGroup(ctx context.Context, user ident
 	}
 
 	return service.persistDelta(ctx, user, delta, provenance)
+}
+
+// DeleteAllGroupsInNamespace deletes all alert rule groups in the specified namespace.
+//
+// TODO:
+// This method first reads all rules in the namespace, groups them by their group key, and then deletes each group.
+// Because of that, this method is prone to race conditions if rules are added or removed concurrently.
+// For example, a rule could be added to a group after the list of rules is read, but before the group is deleted.
+func (service *AlertRuleService) DeleteAllGroupsInNamespace(ctx context.Context, user identity.Requester, namespaceUID string, provenance models.Provenance, query *models.ListAlertRulesQuery) error {
+	// List all groups in the namespace
+	if query == nil {
+		query = &models.ListAlertRulesQuery{}
+	}
+	query.OrgID = user.GetOrgID()
+	query.NamespaceUIDs = []string{namespaceUID}
+
+	rules, err := service.ruleStore.ListAlertRules(ctx, query)
+	if err != nil {
+		return fmt.Errorf("failed to list alert rules in namespace: %w", err)
+	}
+
+	if len(rules) == 0 {
+		return nil // No rules to delete
+	}
+
+	groups := models.GroupByAlertRuleGroupKey(rules)
+	deltas := make([]*store.GroupDelta, 0, len(groups))
+	for groupKey := range groups {
+		delta, err := store.CalculateRuleGroupDelete(ctx, service.ruleStore, groupKey, query)
+		if err != nil {
+			return err
+		}
+		deltas = append(deltas, delta)
+	}
+
+	// Perform all deletions in a transaction
+	return service.xact.InTransaction(ctx, func(ctx context.Context) error {
+		for _, delta := range deltas {
+			// Here we don't use persistDelta since it would create a new transaction
+			// Check if user has write permission to all rules
+			can, err := service.authz.CanWriteAllRules(ctx, user)
+			if err != nil {
+				return err
+			}
+			if !can {
+				if err := service.authz.AuthorizeRuleGroupWrite(ctx, user, delta); err != nil {
+					return err
+				}
+			}
+
+			err = service.persistDelta(ctx, user, delta, provenance)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }
 
 func (service *AlertRuleService) calcDelta(ctx context.Context, user identity.Requester, group models.AlertRuleGroup) (*store.GroupDelta, error) {
@@ -728,7 +797,7 @@ func (service *AlertRuleService) deleteRules(ctx context.Context, orgID int64, t
 
 // GetAlertRuleGroupWithFolderFullpath returns the alert rule group with folder title.
 func (service *AlertRuleService) GetAlertRuleGroupWithFolderFullpath(ctx context.Context, user identity.Requester, namespaceUID, group string) (models.AlertRuleGroupWithFolderFullpath, error) {
-	ruleList, err := service.GetRuleGroup(ctx, user, namespaceUID, group)
+	ruleList, err := service.GetRuleGroup(ctx, user, namespaceUID, group, nil)
 	if err != nil {
 		return models.AlertRuleGroupWithFolderFullpath{}, err
 	}
@@ -749,16 +818,17 @@ func (service *AlertRuleService) GetAlertRuleGroupWithFolderFullpath(ctx context
 }
 
 // GetAlertGroupsWithFolderFullpath returns all groups with folder's full path in the folders identified by folderUID that have at least one alert. If argument folderUIDs is nil or empty - returns groups in all folders.
-func (service *AlertRuleService) GetAlertGroupsWithFolderFullpath(ctx context.Context, user identity.Requester, folderUIDs []string) ([]models.AlertRuleGroupWithFolderFullpath, error) {
-	q := models.ListAlertRulesQuery{
-		OrgID: user.GetOrgID(),
+func (service *AlertRuleService) GetAlertGroupsWithFolderFullpath(ctx context.Context, user identity.Requester, folderUIDs []string, query *models.ListAlertRulesQuery) ([]models.AlertRuleGroupWithFolderFullpath, error) {
+	if query == nil {
+		query = &models.ListAlertRulesQuery{}
 	}
+	query.OrgID = user.GetOrgID()
 
 	if len(folderUIDs) > 0 {
-		q.NamespaceUIDs = folderUIDs
+		query.NamespaceUIDs = folderUIDs
 	}
 
-	ruleList, err := service.ruleStore.ListAlertRules(ctx, &q)
+	ruleList, err := service.ruleStore.ListAlertRules(ctx, query)
 	if err != nil {
 		return nil, err
 	}

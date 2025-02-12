@@ -51,7 +51,7 @@ func TestAlertRuleService(t *testing.T) {
 		err := ruleService.ReplaceRuleGroup(context.Background(), u, group, models.ProvenanceAPI)
 		require.NoError(t, err)
 
-		readGroup, err := ruleService.GetRuleGroup(context.Background(), u, "my-namespace", "group-test-1")
+		readGroup, err := ruleService.GetRuleGroup(context.Background(), u, "my-namespace", "group-test-1", nil)
 		require.NoError(t, err)
 		require.NotEmpty(t, readGroup.Rules)
 		for _, rule := range readGroup.Rules {
@@ -98,7 +98,7 @@ func TestAlertRuleService(t *testing.T) {
 		err := ruleService.ReplaceRuleGroup(context.Background(), u, group, models.ProvenanceAPI)
 		require.NoError(t, err)
 
-		readGroup, err := ruleService.GetRuleGroup(context.Background(), u, "my-namespace", "namespace-test")
+		readGroup, err := ruleService.GetRuleGroup(context.Background(), u, "my-namespace", "namespace-test", nil)
 		require.NoError(t, err)
 		require.NotEmpty(t, readGroup.Rules)
 		require.Equal(t, "my-namespace", readGroup.Rules[0].NamespaceUID)
@@ -111,7 +111,7 @@ func TestAlertRuleService(t *testing.T) {
 		err := ruleService.ReplaceRuleGroup(context.Background(), u, group, models.ProvenanceAPI)
 		require.NoError(t, err)
 
-		readGroup, err := ruleService.GetRuleGroup(context.Background(), u, "my-namespace", "group-test-3")
+		readGroup, err := ruleService.GetRuleGroup(context.Background(), u, "my-namespace", "group-test-3", nil)
 		require.NoError(t, err)
 		require.NotEmpty(t, readGroup.Rules)
 		for _, rule := range readGroup.Rules {
@@ -170,14 +170,14 @@ func TestAlertRuleService(t *testing.T) {
 		group := createDummyGroup("group-test-5", orgID)
 		err := ruleService.ReplaceRuleGroup(context.Background(), u, group, models.ProvenanceAPI)
 		require.NoError(t, err)
-		updatedGroup, err := ruleService.GetRuleGroup(context.Background(), u, "my-namespace", "group-test-5")
+		updatedGroup, err := ruleService.GetRuleGroup(context.Background(), u, "my-namespace", "group-test-5", nil)
 		require.NoError(t, err)
 
 		updatedGroup.Rules[0].Title = "some-other-title-asdf"
 		err = ruleService.ReplaceRuleGroup(context.Background(), u, updatedGroup, models.ProvenanceAPI)
 		require.NoError(t, err)
 
-		readGroup, err := ruleService.GetRuleGroup(context.Background(), u, "my-namespace", "group-test-5")
+		readGroup, err := ruleService.GetRuleGroup(context.Background(), u, "my-namespace", "group-test-5", nil)
 		require.NoError(t, err)
 		require.NotEmpty(t, readGroup.Rules)
 		require.Len(t, readGroup.Rules, 1)
@@ -217,7 +217,7 @@ func TestAlertRuleService(t *testing.T) {
 		err = ruleService.ReplaceRuleGroup(context.Background(), u, group, models.ProvenanceAPI)
 		require.NoError(t, err)
 
-		readGroup, err := ruleService.GetRuleGroup(context.Background(), u, namespaceUID, groupTitle)
+		readGroup, err := ruleService.GetRuleGroup(context.Background(), u, namespaceUID, groupTitle, nil)
 		require.NoError(t, err)
 		require.NotEmpty(t, readGroup.Rules)
 		require.Len(t, readGroup.Rules, 1)
@@ -266,7 +266,7 @@ func TestAlertRuleService(t *testing.T) {
 		}
 		err := ruleService.ReplaceRuleGroup(context.Background(), u, group, models.ProvenanceAPI)
 		require.NoError(t, err)
-		updatedGroup, err := ruleService.GetRuleGroup(context.Background(), u, "my-namespace", "overlap-test")
+		updatedGroup, err := ruleService.GetRuleGroup(context.Background(), u, "my-namespace", "overlap-test", nil)
 		require.NoError(t, err)
 
 		updatedGroup.Rules[0].Title = "overlap-test-rule-2"
@@ -274,7 +274,7 @@ func TestAlertRuleService(t *testing.T) {
 		err = ruleService.ReplaceRuleGroup(context.Background(), u, updatedGroup, models.ProvenanceAPI)
 		require.NoError(t, err)
 
-		readGroup, err := ruleService.GetRuleGroup(context.Background(), u, "my-namespace", "overlap-test")
+		readGroup, err := ruleService.GetRuleGroup(context.Background(), u, "my-namespace", "overlap-test", nil)
 		require.NoError(t, err)
 		require.NotEmpty(t, readGroup.Rules)
 		require.Len(t, readGroup.Rules, 2)
@@ -297,7 +297,7 @@ func TestAlertRuleService(t *testing.T) {
 		}
 		err := ruleService.ReplaceRuleGroup(context.Background(), u, group, models.ProvenanceAPI)
 		require.NoError(t, err)
-		updatedGroup, err := ruleService.GetRuleGroup(context.Background(), u, "my-namespace", "swap-test")
+		updatedGroup, err := ruleService.GetRuleGroup(context.Background(), u, "my-namespace", "swap-test", nil)
 		require.NoError(t, err)
 
 		updatedGroup.Rules[0].Title = "swap-test-rule-2"
@@ -305,7 +305,7 @@ func TestAlertRuleService(t *testing.T) {
 		err = ruleService.ReplaceRuleGroup(context.Background(), u, updatedGroup, models.ProvenanceAPI)
 		require.NoError(t, err)
 
-		readGroup, err := ruleService.GetRuleGroup(context.Background(), u, "my-namespace", "swap-test")
+		readGroup, err := ruleService.GetRuleGroup(context.Background(), u, "my-namespace", "swap-test", nil)
 		require.NoError(t, err)
 		require.NotEmpty(t, readGroup.Rules)
 		require.Len(t, readGroup.Rules, 2)
@@ -329,7 +329,7 @@ func TestAlertRuleService(t *testing.T) {
 		}
 		err := ruleService.ReplaceRuleGroup(context.Background(), u, group, models.ProvenanceAPI)
 		require.NoError(t, err)
-		updatedGroup, err := ruleService.GetRuleGroup(context.Background(), u, "my-namespace", "cycle-test")
+		updatedGroup, err := ruleService.GetRuleGroup(context.Background(), u, "my-namespace", "cycle-test", nil)
 		require.NoError(t, err)
 
 		updatedGroup.Rules[0].Title = "cycle-test-rule-2"
@@ -338,7 +338,7 @@ func TestAlertRuleService(t *testing.T) {
 		err = ruleService.ReplaceRuleGroup(context.Background(), u, updatedGroup, models.ProvenanceAPI)
 		require.NoError(t, err)
 
-		readGroup, err := ruleService.GetRuleGroup(context.Background(), u, "my-namespace", "cycle-test")
+		readGroup, err := ruleService.GetRuleGroup(context.Background(), u, "my-namespace", "cycle-test", nil)
 		require.NoError(t, err)
 		require.NotEmpty(t, readGroup.Rules)
 		require.Len(t, readGroup.Rules, 3)
@@ -367,7 +367,7 @@ func TestAlertRuleService(t *testing.T) {
 		}
 		err := ruleService.ReplaceRuleGroup(context.Background(), u, group, models.ProvenanceAPI)
 		require.NoError(t, err)
-		updatedGroup, err := ruleService.GetRuleGroup(context.Background(), u, "my-namespace", "multi-cycle-test")
+		updatedGroup, err := ruleService.GetRuleGroup(context.Background(), u, "my-namespace", "multi-cycle-test", nil)
 		require.NoError(t, err)
 
 		updatedGroup.Rules[0].Title = "multi-cycle-test-rule-2"
@@ -380,7 +380,7 @@ func TestAlertRuleService(t *testing.T) {
 		err = ruleService.ReplaceRuleGroup(context.Background(), u, updatedGroup, models.ProvenanceAPI)
 		require.NoError(t, err)
 
-		readGroup, err := ruleService.GetRuleGroup(context.Background(), u, "my-namespace", "multi-cycle-test")
+		readGroup, err := ruleService.GetRuleGroup(context.Background(), u, "my-namespace", "multi-cycle-test", nil)
 		require.NoError(t, err)
 		require.NotEmpty(t, readGroup.Rules)
 		require.Len(t, readGroup.Rules, 5)
@@ -419,7 +419,7 @@ func TestAlertRuleService(t *testing.T) {
 		err = ruleService.ReplaceRuleGroup(context.Background(), u, updatedGroup, models.ProvenanceAPI)
 		require.NoError(t, err)
 
-		readGroup, err := ruleService.GetRuleGroup(context.Background(), u, "my-namespace", "recreate-test")
+		readGroup, err := ruleService.GetRuleGroup(context.Background(), u, "my-namespace", "recreate-test", nil)
 		require.NoError(t, err)
 		require.NotEmpty(t, readGroup.Rules)
 		require.Len(t, readGroup.Rules, 1)
@@ -439,7 +439,7 @@ func TestAlertRuleService(t *testing.T) {
 		}
 		err := ruleService.ReplaceRuleGroup(context.Background(), u, group, models.ProvenanceAPI)
 		require.NoError(t, err)
-		updatedGroup, err := ruleService.GetRuleGroup(context.Background(), u, "my-namespace", "create-overlap-test")
+		updatedGroup, err := ruleService.GetRuleGroup(context.Background(), u, "my-namespace", "create-overlap-test", nil)
 		require.NoError(t, err)
 		updatedGroup.Rules[0].Title = "create-overlap-test-rule-2"
 		updatedGroup.Rules = append(updatedGroup.Rules, dummyRule("create-overlap-test-rule-1", orgID))
@@ -447,7 +447,7 @@ func TestAlertRuleService(t *testing.T) {
 		err = ruleService.ReplaceRuleGroup(context.Background(), u, updatedGroup, models.ProvenanceAPI)
 		require.NoError(t, err)
 
-		readGroup, err := ruleService.GetRuleGroup(context.Background(), u, "my-namespace", "create-overlap-test")
+		readGroup, err := ruleService.GetRuleGroup(context.Background(), u, "my-namespace", "create-overlap-test", nil)
 		require.NoError(t, err)
 		require.NotEmpty(t, readGroup.Rules)
 		require.Len(t, readGroup.Rules, 2)
@@ -468,7 +468,7 @@ func TestAlertRuleService(t *testing.T) {
 
 		err := ruleService.ReplaceRuleGroup(context.Background(), u, group, models.ProvenanceAPI)
 		require.NoError(t, err)
-		updatedGroup, err := ruleService.GetRuleGroup(context.Background(), u, "my-namespace", "group-test-5")
+		updatedGroup, err := ruleService.GetRuleGroup(context.Background(), u, "my-namespace", "group-test-5", nil)
 		require.NoError(t, err)
 
 		require.NotNil(t, updatedGroup.Rules[0].DashboardUID)
@@ -1212,7 +1212,7 @@ func TestGetRuleGroup(t *testing.T) {
 	t.Run("return ErrAlertRuleGroupNotFound when rule group does not exist", func(t *testing.T) {
 		service, _, _, ac := initServiceWithData(t)
 
-		_, err := service.GetRuleGroup(context.Background(), u, groupKey.NamespaceUID, "no-rule-group")
+		_, err := service.GetRuleGroup(context.Background(), u, groupKey.NamespaceUID, "no-rule-group", nil)
 		require.ErrorIs(t, err, models.ErrAlertRuleGroupNotFound)
 		require.Empty(t, ac.Calls)
 	})
@@ -1232,7 +1232,7 @@ func TestGetRuleGroup(t *testing.T) {
 				return expectedErr
 			}
 
-			_, err := service.GetRuleGroup(context.Background(), u, groupKey.NamespaceUID, groupKey.RuleGroup)
+			_, err := service.GetRuleGroup(context.Background(), u, groupKey.NamespaceUID, groupKey.RuleGroup, nil)
 			require.Error(t, err)
 			require.Equal(t, expectedErr, err)
 
@@ -1244,7 +1244,7 @@ func TestGetRuleGroup(t *testing.T) {
 				return nil
 			}
 
-			group, err := service.GetRuleGroup(context.Background(), u, groupKey.NamespaceUID, groupKey.RuleGroup)
+			group, err := service.GetRuleGroup(context.Background(), u, groupKey.NamespaceUID, groupKey.RuleGroup, nil)
 			require.NoError(t, err)
 
 			assert.Equal(t, groupKey.RuleGroup, group.Title)
@@ -1263,7 +1263,7 @@ func TestGetRuleGroup(t *testing.T) {
 				return true, nil
 			}
 
-			group, err := service.GetRuleGroup(context.Background(), u, groupKey.NamespaceUID, groupKey.RuleGroup)
+			group, err := service.GetRuleGroup(context.Background(), u, groupKey.NamespaceUID, groupKey.RuleGroup, nil)
 			require.NoError(t, err)
 
 			assert.Len(t, ac.Calls, 1)
@@ -1284,7 +1284,7 @@ func TestGetRuleGroup(t *testing.T) {
 			return false, expectedErr
 		}
 
-		_, err := service.GetRuleGroup(context.Background(), u, groupKey.NamespaceUID, groupKey.RuleGroup)
+		_, err := service.GetRuleGroup(context.Background(), u, groupKey.NamespaceUID, groupKey.RuleGroup, nil)
 		require.Error(t, err)
 		require.Equal(t, expectedErr, err)
 
@@ -1325,7 +1325,7 @@ func TestGetAlertRules(t *testing.T) {
 			return false, expectedErr
 		}
 
-		_, _, err := service.GetAlertRules(context.Background(), u)
+		_, _, err := service.GetAlertRules(context.Background(), u, nil)
 		require.ErrorIs(t, err, expectedErr)
 	})
 
@@ -1336,7 +1336,7 @@ func TestGetAlertRules(t *testing.T) {
 				return true, nil
 			}
 
-			rules, provenance, err := service.GetAlertRules(context.Background(), u)
+			rules, provenance, err := service.GetAlertRules(context.Background(), u, nil)
 			require.NoError(t, err)
 			require.Equal(t, allRules, rules)
 			require.Len(t, provenance, len(rules1))
@@ -1360,7 +1360,7 @@ func TestGetAlertRules(t *testing.T) {
 					return nil
 				}
 
-				rules, provenance, err := service.GetAlertRules(context.Background(), u)
+				rules, provenance, err := service.GetAlertRules(context.Background(), u, nil)
 				require.NoError(t, err)
 
 				assert.Equal(t, rules2, rules)
@@ -1386,7 +1386,7 @@ func TestGetAlertRules(t *testing.T) {
 					return expectedErr
 				}
 
-				_, _, err := service.GetAlertRules(context.Background(), u)
+				_, _, err := service.GetAlertRules(context.Background(), u, nil)
 				require.ErrorIs(t, err, expectedErr)
 			})
 		})
@@ -1642,7 +1642,7 @@ func TestProvisiongWithFullpath(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, namespaceTitle, res2.FolderFullpath)
 
-		res3, err := ruleService.GetAlertGroupsWithFolderFullpath(context.Background(), &signedInUser, []string{namespaceUID})
+		res3, err := ruleService.GetAlertGroupsWithFolderFullpath(context.Background(), &signedInUser, []string{namespaceUID}, nil)
 		require.NoError(t, err)
 		assert.Equal(t, namespaceTitle, res3[0].FolderFullpath)
 	})
@@ -1673,7 +1673,7 @@ func TestProvisiongWithFullpath(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, "my-namespace/my-other-namespace containing multiple \\/\\/", res2.FolderFullpath)
 
-		res3, err := ruleService.GetAlertGroupsWithFolderFullpath(context.Background(), &signedInUser, []string{otherNamespaceUID})
+		res3, err := ruleService.GetAlertGroupsWithFolderFullpath(context.Background(), &signedInUser, []string{otherNamespaceUID}, nil)
 		require.NoError(t, err)
 		assert.Equal(t, "my-namespace/my-other-namespace containing multiple \\/\\/", res3[0].FolderFullpath)
 	})
