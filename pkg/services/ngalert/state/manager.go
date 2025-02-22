@@ -519,7 +519,7 @@ func (st *Manager) deleteStaleStatesFromCache(logger log.Logger, evaluatedAt tim
 	// If we are removing two or more stale series it makes sense to share the resolved image as the alert rule is the same.
 	// TODO: We will need to change this when we support images without screenshots as each series will have a different image
 	staleStates := st.cache.deleteRuleStates(alertRule.GetKey(), func(s *State) bool {
-		return stateIsStale(evaluatedAt, s.LastEvaluationTime, alertRule.IntervalSeconds)
+		return stateIsStale(evaluatedAt, s.LastEvaluationTime, alertRule.IntervalSeconds, alertRule.ResolveAfterMissingFor)
 	})
 	resolvedStates := make([]StateTransition, 0, len(staleStates))
 
@@ -551,8 +551,15 @@ func (st *Manager) deleteStaleStatesFromCache(logger log.Logger, evaluatedAt tim
 	return resolvedStates
 }
 
-func stateIsStale(evaluatedAt time.Time, lastEval time.Time, intervalSeconds int64) bool {
-	return !lastEval.Add(2 * time.Duration(intervalSeconds) * time.Second).After(evaluatedAt)
+func stateIsStale(evaluatedAt time.Time, lastEval time.Time, intervalSeconds int64, resolveAfterMissingFor *time.Duration) bool {
+	var resolveAfter time.Duration
+	if resolveAfterMissingFor != nil {
+		resolveAfter = *resolveAfterMissingFor
+	} else {
+		resolveAfter = 2 * time.Duration(intervalSeconds) * time.Second
+	}
+
+	return !lastEval.Add(resolveAfter).After(evaluatedAt)
 }
 
 func StatesToRuleStatus(states []*State) ngModels.RuleStatus {

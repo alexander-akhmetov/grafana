@@ -286,12 +286,13 @@ type AlertRule struct {
 	ExecErrState    ExecutionErrorState
 	// ideally this field should have been apimodels.ApiDuration
 	// but this is currently not possible because of circular dependencies
-	For                  time.Duration
-	Annotations          map[string]string
-	Labels               map[string]string
-	IsPaused             bool
-	NotificationSettings []NotificationSettings
-	Metadata             AlertRuleMetadata
+	For                    time.Duration
+	Annotations            map[string]string
+	Labels                 map[string]string
+	IsPaused               bool
+	NotificationSettings   []NotificationSettings
+	Metadata               AlertRuleMetadata
+	ResolveAfterMissingFor *time.Duration
 }
 
 type AlertRuleMetadata struct {
@@ -614,6 +615,10 @@ func (alertRule *AlertRule) ValidateAlertRule(cfg setting.UnifiedAlertingSetting
 		return fmt.Errorf("%w: field `for` cannot be negative", ErrAlertRuleFailedValidation)
 	}
 
+	if alertRule.ResolveAfterMissingFor != nil && *alertRule.ResolveAfterMissingFor < 0 {
+		return fmt.Errorf("%w: field `resolve_after_missing_for` cannot be negative", ErrAlertRuleFailedValidation)
+	}
+
 	if len(alertRule.Labels) > 0 {
 		for label := range alertRule.Labels {
 			if _, ok := LabelsUserCannotSpecify[label]; ok {
@@ -691,24 +696,25 @@ func (alertRule *AlertRule) Copy() *AlertRule {
 		return nil
 	}
 	result := AlertRule{
-		ID:              alertRule.ID,
-		OrgID:           alertRule.OrgID,
-		Title:           alertRule.Title,
-		Condition:       alertRule.Condition,
-		Updated:         alertRule.Updated,
-		UpdatedBy:       alertRule.UpdatedBy,
-		IntervalSeconds: alertRule.IntervalSeconds,
-		Version:         alertRule.Version,
-		UID:             alertRule.UID,
-		NamespaceUID:    alertRule.NamespaceUID,
-		RuleGroup:       alertRule.RuleGroup,
-		RuleGroupIndex:  alertRule.RuleGroupIndex,
-		NoDataState:     alertRule.NoDataState,
-		ExecErrState:    alertRule.ExecErrState,
-		For:             alertRule.For,
-		Record:          alertRule.Record,
-		IsPaused:        alertRule.IsPaused,
-		Metadata:        alertRule.Metadata,
+		ID:                     alertRule.ID,
+		OrgID:                  alertRule.OrgID,
+		Title:                  alertRule.Title,
+		Condition:              alertRule.Condition,
+		Updated:                alertRule.Updated,
+		UpdatedBy:              alertRule.UpdatedBy,
+		IntervalSeconds:        alertRule.IntervalSeconds,
+		Version:                alertRule.Version,
+		UID:                    alertRule.UID,
+		NamespaceUID:           alertRule.NamespaceUID,
+		RuleGroup:              alertRule.RuleGroup,
+		RuleGroupIndex:         alertRule.RuleGroupIndex,
+		NoDataState:            alertRule.NoDataState,
+		ExecErrState:           alertRule.ExecErrState,
+		For:                    alertRule.For,
+		Record:                 alertRule.Record,
+		IsPaused:               alertRule.IsPaused,
+		Metadata:               alertRule.Metadata,
+		ResolveAfterMissingFor: alertRule.ResolveAfterMissingFor,
 	}
 
 	if alertRule.DashboardUID != nil {
@@ -917,6 +923,9 @@ func PatchPartialAlertRule(existingRule *AlertRule, ruleToPatch *AlertRuleWithOp
 	}
 	if !ruleToPatch.HasPause {
 		ruleToPatch.IsPaused = existingRule.IsPaused
+	}
+	if ruleToPatch.ResolveAfterMissingFor == nil {
+		ruleToPatch.ResolveAfterMissingFor = existingRule.ResolveAfterMissingFor
 	}
 
 	// Currently metadata contains only editor settings, so we can just copy it.

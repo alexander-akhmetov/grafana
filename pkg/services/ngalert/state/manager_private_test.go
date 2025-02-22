@@ -31,10 +31,15 @@ func TestStateIsStale(t *testing.T) {
 	now := time.Now()
 	intervalSeconds := rand.Int63n(10) + 5
 
+	threeIntervals := time.Duration(intervalSeconds) * time.Second * 3
+	fourIntervals := time.Duration(intervalSeconds) * time.Second * 4
+	fiveIntervals := time.Duration(intervalSeconds) * time.Second * 5
+
 	testCases := []struct {
-		name           string
-		lastEvaluation time.Time
-		expectedResult bool
+		name                   string
+		lastEvaluation         time.Time
+		expectedResult         bool
+		resolveAfterMissingFor *time.Duration
 	}{
 		{
 			name:           "false if last evaluation is now",
@@ -61,10 +66,29 @@ func TestStateIsStale(t *testing.T) {
 			lastEvaluation: now.Add(-time.Duration(intervalSeconds) * time.Second * 3),
 			expectedResult: true,
 		},
+		{
+			name:                   "false if last evaluation is within custom resolve after missing for",
+			lastEvaluation:         now.Add(-threeIntervals),
+			expectedResult:         false,
+			resolveAfterMissingFor: &fourIntervals,
+		},
+		{
+			name:                   "true if last evaluation equals custom resolve after missing for",
+			lastEvaluation:         now.Add(-fourIntervals),
+			expectedResult:         true,
+			resolveAfterMissingFor: &fourIntervals,
+		},
+		{
+			name:                   "true if last evaluation exceeds custom resolve after missing for",
+			lastEvaluation:         now.Add(-fiveIntervals),
+			expectedResult:         true,
+			resolveAfterMissingFor: &fourIntervals,
+		},
 	}
+
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			require.Equal(t, tc.expectedResult, stateIsStale(now, tc.lastEvaluation, intervalSeconds))
+			require.Equal(t, tc.expectedResult, stateIsStale(now, tc.lastEvaluation, intervalSeconds, tc.resolveAfterMissingFor))
 		})
 	}
 }

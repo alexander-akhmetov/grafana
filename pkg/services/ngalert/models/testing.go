@@ -73,6 +73,11 @@ func (g *AlertRuleGenerator) Generate() AlertRule {
 	interval := (rand.Int63n(6) + 1) * 10
 	forInterval := time.Duration(interval*rand.Int63n(6)) * time.Second
 
+	// Make resolveAfterMissingFor random but in the (2*interval+1, 3*interval) range.
+	// This is needed to keep the rule generation random, but preserve the original stale state behaviour
+	// when the state is considered stale after missing for more than 2*interval.
+	resolveAfterMissingFor := time.Duration(rand.Int63n(interval+1)+interval*2) * time.Second
+
 	var annotations map[string]string = nil
 	if rand.Int63()%2 == 0 {
 		annotations = GenerateAlertLabels(rand.Intn(5), "ann-")
@@ -102,28 +107,29 @@ func (g *AlertRuleGenerator) Generate() AlertRule {
 	}
 
 	rule := AlertRule{
-		ID:                   0,
-		OrgID:                rand.Int63n(1500) + 1, // Prevent OrgID=0 as this does not pass alert rule validation.
-		Title:                fmt.Sprintf("title-%s", util.GenerateShortUID()),
-		Condition:            "A",
-		Data:                 []AlertQuery{g.GenerateQuery()},
-		Updated:              time.Now().Add(-time.Duration(rand.Intn(100) + 1)),
-		UpdatedBy:            updatedBy,
-		IntervalSeconds:      rand.Int63n(60) + 1,
-		Version:              rand.Int63n(1500), // Don't generate a rule ID too big for postgres
-		UID:                  util.GenerateShortUID(),
-		NamespaceUID:         util.GenerateShortUID(),
-		DashboardUID:         dashUID,
-		PanelID:              panelID,
-		RuleGroup:            fmt.Sprintf("group-%s,", util.GenerateShortUID()),
-		RuleGroupIndex:       rand.Intn(1500),
-		NoDataState:          randNoDataState(),
-		ExecErrState:         randErrState(),
-		For:                  forInterval,
-		Annotations:          annotations,
-		Labels:               labels,
-		NotificationSettings: ns,
-		Metadata:             GenerateMetadata(),
+		ID:                     0,
+		OrgID:                  rand.Int63n(1500) + 1, // Prevent OrgID=0 as this does not pass alert rule validation.
+		Title:                  fmt.Sprintf("title-%s", util.GenerateShortUID()),
+		Condition:              "A",
+		Data:                   []AlertQuery{g.GenerateQuery()},
+		Updated:                time.Now().Add(-time.Duration(rand.Intn(100) + 1)),
+		UpdatedBy:              updatedBy,
+		IntervalSeconds:        rand.Int63n(60) + 1,
+		Version:                rand.Int63n(1500), // Don't generate a rule ID too big for postgres
+		UID:                    util.GenerateShortUID(),
+		NamespaceUID:           util.GenerateShortUID(),
+		DashboardUID:           dashUID,
+		PanelID:                panelID,
+		RuleGroup:              fmt.Sprintf("group-%s,", util.GenerateShortUID()),
+		RuleGroupIndex:         rand.Intn(1500),
+		NoDataState:            randNoDataState(),
+		ExecErrState:           randErrState(),
+		For:                    forInterval,
+		Annotations:            annotations,
+		Labels:                 labels,
+		NotificationSettings:   ns,
+		Metadata:               GenerateMetadata(),
+		ResolveAfterMissingFor: &resolveAfterMissingFor,
 	}
 
 	for _, mutator := range g.mutators {
@@ -489,11 +495,18 @@ func (a *AlertRuleMutators) WithSameGroup() AlertRuleMutator {
 	}
 }
 
+func (a *AlertRuleMutators) WithResolveAfterMissingFor(interval time.Duration) AlertRuleMutator {
+	return func(rule *AlertRule) {
+		rule.ResolveAfterMissingFor = &interval
+	}
+}
+
 func (a *AlertRuleMutators) WithNotificationSettingsGen(ns func() NotificationSettings) AlertRuleMutator {
 	return func(rule *AlertRule) {
 		rule.NotificationSettings = []NotificationSettings{ns()}
 	}
 }
+
 func (a *AlertRuleMutators) WithNotificationSettings(ns NotificationSettings) AlertRuleMutator {
 	return func(rule *AlertRule) {
 		rule.NotificationSettings = []NotificationSettings{ns}
