@@ -18,6 +18,7 @@ import (
 	"github.com/grafana/grafana/pkg/services/ngalert/metrics"
 	ngModels "github.com/grafana/grafana/pkg/services/ngalert/models"
 	history_model "github.com/grafana/grafana/pkg/services/ngalert/state/historian/model"
+	state_metric_model "github.com/grafana/grafana/pkg/services/ngalert/state/metrics_writer/model"
 )
 
 var (
@@ -50,10 +51,11 @@ type Manager struct {
 	ResendDelay       time.Duration
 	ResolvedRetention time.Duration
 
-	instanceStore InstanceStore
-	images        ImageCapturer
-	historian     Historian
-	externalURL   *url.URL
+	instanceStore           InstanceStore
+	images                  ImageCapturer
+	historian               Historian
+	externalURL             *url.URL
+	alertStateMetricsWriter AlertStateMetricsWriter
 
 	rulesPerRuleGroupLimit int64
 
@@ -72,6 +74,8 @@ type ManagerCfg struct {
 	// StatePeriodicSaveBatchSize controls the size of the alert instance batch that is saved periodically when the
 	// alertingSaveStatePeriodic feature flag is enabled.
 	StatePeriodicSaveBatchSize int
+
+	AlertStateMetricsWriter AlertStateMetricsWriter
 
 	RulesPerRuleGroupLimit int64
 
@@ -93,19 +97,20 @@ func NewManager(cfg ManagerCfg, statePersister StatePersister) *Manager {
 	}
 
 	m := &Manager{
-		cache:                  c,
-		ResendDelay:            ResendDelay, // TODO: make this configurable
-		ResolvedRetention:      cfg.ResolvedRetention,
-		log:                    cfg.Log,
-		metrics:                cfg.Metrics,
-		instanceStore:          cfg.InstanceStore,
-		images:                 cfg.Images,
-		historian:              cfg.Historian,
-		clock:                  cfg.Clock,
-		externalURL:            cfg.ExternalURL,
-		rulesPerRuleGroupLimit: cfg.RulesPerRuleGroupLimit,
-		persister:              statePersister,
-		tracer:                 cfg.Tracer,
+		cache:                   c,
+		ResendDelay:             ResendDelay, // TODO: make this configurable
+		ResolvedRetention:       cfg.ResolvedRetention,
+		log:                     cfg.Log,
+		metrics:                 cfg.Metrics,
+		instanceStore:           cfg.InstanceStore,
+		images:                  cfg.Images,
+		historian:               cfg.Historian,
+		alertStateMetricsWriter: cfg.AlertStateMetricsWriter,
+		clock:                   cfg.Clock,
+		externalURL:             cfg.ExternalURL,
+		rulesPerRuleGroupLimit:  cfg.RulesPerRuleGroupLimit,
+		persister:               statePersister,
+		tracer:                  cfg.Tracer,
 	}
 
 	return m
@@ -369,6 +374,13 @@ func (st *Manager) ProcessEvalResults(
 	st.persister.Sync(ctx, span, alertRule.GetKeyWithGroup(), allChanges)
 	if st.historian != nil {
 		st.historian.Record(ctx, history_model.NewRuleMeta(alertRule, logger), allChanges)
+	}
+
+	if st.alertStateMetricsWriter != nil {
+		meta := state_metric_model.RuleMeta{
+			Title: alertRule.Title,
+		}
+		st.alertStateMetricsWriter.Write(ctx, meta, allChanges)
 	}
 
 	// Optional callback intended for sending the states to an alertmanager.

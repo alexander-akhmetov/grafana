@@ -42,6 +42,7 @@ import (
 	"github.com/grafana/grafana/pkg/services/ngalert/sender"
 	"github.com/grafana/grafana/pkg/services/ngalert/state"
 	"github.com/grafana/grafana/pkg/services/ngalert/state/historian"
+	"github.com/grafana/grafana/pkg/services/ngalert/state/metrics_writer"
 	"github.com/grafana/grafana/pkg/services/ngalert/store"
 	"github.com/grafana/grafana/pkg/services/ngalert/writer"
 	"github.com/grafana/grafana/pkg/services/notifications"
@@ -403,6 +404,11 @@ func (ng *AlertNG) init() error {
 		return err
 	}
 
+	alertMetricsWriter, err := configureAlertStateMetricsWriter(ng.Cfg.UnifiedAlerting.AlertStateMetricSettings, ng.httpClientProvider, ng.DataSourceService, clk, ng.Metrics.GetRemoteWriterMetrics())
+	if err != nil {
+		return err
+	}
+
 	ng.InstanceStore, ng.StartupInstanceReader = initInstanceStore(ng.store.SQLStore, ng.Log, ng.FeatureToggles)
 
 	stateManagerCfg := state.ManagerCfg{
@@ -413,6 +419,7 @@ func (ng *AlertNG) init() error {
 		Images:                     ng.ImageService,
 		Clock:                      clk,
 		Historian:                  history,
+		AlertStateMetricsWriter:    alertMetricsWriter,
 		MaxStateSaveConcurrency:    ng.Cfg.UnifiedAlerting.MaxStateSaveConcurrency,
 		StatePeriodicSaveBatchSize: ng.Cfg.UnifiedAlerting.StatePeriodicSaveBatchSize,
 		RulesPerRuleGroupLimit:     ng.Cfg.UnifiedAlerting.RulesPerRuleGroupLimit,
@@ -726,4 +733,18 @@ func createRecordingWriter(featureToggles featuremgmt.FeatureToggles, settings s
 	}
 
 	return writer.NoopWriter{}, nil
+}
+
+func configureAlertStateMetricsWriter(s setting.AlertStateMetricSettings, httpClientProvider httpclient.Provider, datasourceService datasources.DataSourceService, clock clock.Clock, m *metrics.RemoteWriter) (state.AlertStateMetricsWriter, error) {
+	logger := log.New("ngalert.alert_state_metrics_writer")
+	writerCfg := writer.DatasourceWriterConfig{
+		Timeout: s.Timeout,
+	}
+	w := writer.NewDatasourceWriter(writerCfg, datasourceService, httpClientProvider, clock, logger, m)
+
+	cfg := metrics_writer.Config{
+		DatasourceUID: s.DatasourceUID,
+	}
+
+	return metrics_writer.NewWriter(cfg, w, logger), nil
 }
